@@ -414,7 +414,7 @@ class PixivCollection():
                         for tag in image['tags']:
                             tag_name = tag['name']
                             self.__update_data('tag', tag_name, tag)
-                        self.__ensure_ai_tag_defined(image_id=image['id'])
+                        self._ensure_ai_illust_tag(image_id=image['id'])
                 else:
                     # 判断是否为多图
                     if image['page_count'] == 1:
@@ -496,15 +496,28 @@ class PixivCollection():
         local_files = self.__list_files(self.__path['original'])
 
         for filename in local_files:
-            if (filename != normalize_filename(filename)):
+            normalized_filename = normalize_filename(filename)
+            if (filename != normalized_filename):
+                normalized_file_path = f'{self.__path["original"]}{normalized_filename}'
+                if os.path.exists(normalized_file_path):
+                    logger.warning(
+                        f'检测到重复异常名称文件: {filename}, 规范文件已存在: {normalized_filename}, 跳过'
+                    )
+                    continue
                 logger.warning(
-                    f'检测到异常名称文件: {filename}, 修正为: {normalize_filename(filename)}'
+                    f'检测到异常名称文件: {filename}, 修正为: {normalized_filename}'
                 )
                 os.rename(
                     f'{self.__path["original"]}{filename}',
-                    f'{self.__path["original"]}{normalize_filename(filename)}')
+                    normalized_file_path)
 
         local_files = self.__list_files(self.__path['original'])
+        local_files = [
+            filename for filename in local_files
+            if filename == normalize_filename(filename)
+            or not os.path.exists(
+                f'{self.__path["original"]}{normalize_filename(filename)}')
+        ]
 
         # 检测冲突文件
         index = {}
